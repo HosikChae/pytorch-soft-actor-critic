@@ -47,7 +47,10 @@ parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
                     help='size of replay buffer (default: 10000000)')
 parser.add_argument('--cuda', action="store_true",
                     help='run on CUDA (default: False)')
-parser.add_argument('--sim_port', type=int, default=19997, metavar='N', help='CoppeliaSim port number')
+parser.add_argument('--sim_port', type=int, default=19997, metavar='N', help='CoppeliaSim port number (default: 19997)')
+parser.add_argument('--save_period', type=int, default=-1, metavar='N', help="Model saving period in episode (default: -1)")
+parser.add_argument('--load_model', default="", type=str, help="The suffix of the model to load")
+
 args = parser.parse_args()
 
 print("============= Args ==============")
@@ -73,12 +76,24 @@ if args.max_episode_steps > 0:
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 
+# Tags
+tag_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+tag_env_name = args.env_name
+tag_policy = args.policy
+tag_autotune = "_autotune" if args.automatic_entropy_tuning else ""
+tag_suffix = "{}_{}{}".format(tag_datetime, tag_policy, tag_autotune)
+
 # Agent
 agent = SAC(env.observation_space.shape[0], env.action_space, args)
 
+if bool(args.load_model) == True:
+    agent.load_model(
+        actor_path="models/sac_actor_{}_{}".format(tag_env_name, args.load_model),
+        critic_path="models/sac_critic_{}_{}".format(tag_env_name, args.load_model)
+    )
+
 #Tesnorboard
-writer = SummaryWriter('runs/{}_SAC_{}_{}_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), args.env_name,
-                                                             args.policy, "autotune" if args.automatic_entropy_tuning else ""))
+writer = SummaryWriter('runs/sac_{}_{}'.format(tag_env_name, tag_suffix))
 
 # Memory
 memory = ReplayMemory(args.replay_size, args.seed)
@@ -131,6 +146,9 @@ for i_episode in itertools.count(1):
     writer.add_scalar('reward/train', episode_reward, i_episode)
     print("Episode: {}, total numsteps: {}, episode steps: {}, reward: {}".format(i_episode, total_numsteps, episode_steps, round(episode_reward, 2)))
 
+    if args.save_period > 0 and i_episode % args.save_period == 0:
+        agent.save_model(env_name=tag_env_name, suffix="{}_{}_{}".format(tag_suffix, i_episode, total_numsteps))
+
     if i_episode % 30 == 0 and args.eval is True: # 10
         avg_reward = 0.
         episodes = 3 # 10
@@ -150,11 +168,10 @@ for i_episode in itertools.count(1):
         avg_reward /= episodes
 
 
-        writer.add_scalar('avg_reward/test', avg_reward, i_episode)
+        writer.add_scalar('reward/avg_test', avg_reward, i_episode)
 
         print("----------------------------------------")
         print("Test Episodes: {}, Avg. Reward: {}".format(episodes, round(avg_reward, 2)))
         print("----------------------------------------")
 
 env.close()
-
