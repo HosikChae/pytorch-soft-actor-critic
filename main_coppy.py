@@ -47,6 +47,7 @@ parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
                     help='size of replay buffer (default: 10000000)')
 parser.add_argument('--cuda', action="store_true",
                     help='run on CUDA (default: False)')
+parser.add_argument('--sim_port', type=int, default=19997, metavar='N', help='CoppeliaSim port number')
 args = parser.parse_args()
 
 print("============= Args ==============")
@@ -56,7 +57,12 @@ print("=================================")
 # Environment
 # env = NormalizedActions(gym.make(args.env_name))
 
-env = gym.make(args.env_name)
+env = gym.make(args.env_name, **{
+    'vrep_config':{'connectionAddress':'127.0.0.1', 'connectionPort':args.sim_port},
+    'open_simulator': False,
+    'headless': True,
+    'auto_init':True
+})
 if "Cheetah" in args.env_name:
   env = gym.wrappers.TimeLimit(env, 10)
 env.seed(args.seed)
