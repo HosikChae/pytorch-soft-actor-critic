@@ -174,4 +174,6 @@ for i_episode in itertools.count(1):
         print("Test Episodes: {}, Avg. Reward: {}".format(episodes, round(avg_reward, 2)))
         print("----------------------------------------")
 
+agent.save_model(env_name=tag_env_name, suffix="{}_{}".format(tag_suffix, i_episode))
+
 env.close()
