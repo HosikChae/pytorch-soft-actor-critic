@@ -67,7 +67,7 @@ env = gym.make(args.env_name, **{
     'auto_init':True
 })
 if "Cheetah" in args.env_name:
-  env = gym.wrappers.TimeLimit(env, 10)
+  env = gym.wrappers.TimeLimit(env, 1000)
 env.seed(args.seed)
 env.action_space.seed(args.seed)
 if args.max_episode_steps > 0:
